@@ -123,6 +123,8 @@ int main(void) {
 
     // Select UART TXD on P2.0
     GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, GPIO_PIN0, GPIO_SECONDARY_MODULE_FUNCTION);
+    // Select UART RXD on P2.1
+    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, GPIO_PIN1, GPIO_SECONDARY_MODULE_FUNCTION);
 
     // simple test uart
     while(1){
@@ -242,9 +244,18 @@ void Init_UART()
     // Configure UART
     EUSCI_A_UART_initParam param = {0};
     param.selectClockSource = EUSCI_A_UART_CLOCKSOURCE_SMCLK;
+    
+    /* 9600 
     param.clockPrescalar = 52;
     param.firstModReg = 1;
     param.secondModReg = 0x49;
+    */
+
+    /* 115200   */
+    param.clockPrescalar = 4;
+    param.firstModReg = 5;
+    param.secondModReg = 0x55;
+
     param.parity = EUSCI_A_UART_NO_PARITY;
     param.msborLsbFirst = EUSCI_A_UART_LSB_FIRST;
     param.numberofStopBits = EUSCI_A_UART_ONE_STOP_BIT;
