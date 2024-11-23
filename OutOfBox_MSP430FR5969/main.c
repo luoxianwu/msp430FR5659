@@ -121,6 +121,23 @@ int main(void) {
     Init_Clock();
     Init_UART();
 
+    // Select UART TXD on P2.0
+    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, GPIO_PIN0, GPIO_SECONDARY_MODULE_FUNCTION);
+
+    // simple test uart
+    while(1){
+
+    EUSCI_A_UART_transmitData(EUSCI_A0_BASE, 0x55);
+
+    while(EUSCI_A_UART_queryStatusFlags(EUSCI_A0_BASE, EUSCI_A_UART_BUSY));
+
+    //delay
+    long long volatile cnt = 900000;
+    while(cnt--);
+
+    }
+
+
     // Main Loop
     while (1)
     {
