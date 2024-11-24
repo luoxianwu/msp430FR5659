@@ -356,10 +356,6 @@ extern void EUSCI_A_UART_disableInterrupt(uint16_t baseAddress,
                                           uint8_t mask);
 
 //*****************************************************************************
-
-uint8_t EUSCI_A_UART_getInterruptEnableStatus(uint16_t baseAddress,
-                                        uint8_t mask);
-
 //
 //! \brief Gets the current UART interrupt status.
 //!

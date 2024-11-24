@@ -176,12 +176,6 @@ void EUSCI_A_UART_disableInterrupt(uint16_t baseAddress,
     HWREG16(baseAddress + OFS_UCAxCTLW0) &= ~locMask;
 }
 
-uint8_t EUSCI_A_UART_getInterruptEnableStatus(uint16_t baseAddress,
-                                        uint8_t mask)
-{
-    return (HWREG16(baseAddress + OFS_UCAxIE) & mask);
-}
-
 uint8_t EUSCI_A_UART_getInterruptStatus(uint16_t baseAddress,
                                         uint8_t mask)
 {

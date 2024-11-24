@@ -45,6 +45,7 @@
 #include "LiveTempMode.h"
 #include "FRAMLogMode.h"
 #include "driverlib.h"
+#include "uart.h"
 
 uint8_t RXData = 0;                               // UART Receive byte
 int mode = 0;                                     // mode selection variable
@@ -104,14 +105,14 @@ int main(void) {
     else
     {
     	Init_GPIO();
-    	GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    	GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0); //green LED on
 
     	// Toggle LED1 and LED2 to indicate OutOfBox Demo start
     	int i;
     	for (i=0;i<10;i++)
     	{
             GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-            GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN6);
+            GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN6); //red led toggle
             __delay_cycles(200000);
     	}
     }
@@ -127,11 +128,12 @@ int main(void) {
     GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P2, GPIO_PIN1, GPIO_SECONDARY_MODULE_FUNCTION);
 
     // simple test uart
+    uint8_t s[] = "1234567\n\r";
     while(1){
+    uart_puts(s, sizeof(s));
+    //EUSCI_A_UART_transmitData(EUSCI_A0_BASE, 0x55);
 
-    EUSCI_A_UART_transmitData(EUSCI_A0_BASE, 0x55);
-
-    while(EUSCI_A_UART_queryStatusFlags(EUSCI_A0_BASE, EUSCI_A_UART_BUSY));
+    //while(EUSCI_A_UART_queryStatusFlags(EUSCI_A0_BASE, EUSCI_A_UART_BUSY));
 
     //delay
     long long volatile cnt = 900000;
@@ -236,47 +238,6 @@ void Init_Clock()
     CS_turnOnLFXT(CS_LFXT_DRIVE_0);
 }
 
-/*
- * UART Communication Initialization
- */
-void Init_UART()
-{
-    // Configure UART
-    EUSCI_A_UART_initParam param = {0};
-    param.selectClockSource = EUSCI_A_UART_CLOCKSOURCE_SMCLK;
-    
-    /* 9600 
-    param.clockPrescalar = 52;
-    param.firstModReg = 1;
-    param.secondModReg = 0x49;
-    */
-
-    /* 115200   */
-    param.clockPrescalar = 4;
-    param.firstModReg = 5;
-    param.secondModReg = 0x55;
-
-    param.parity = EUSCI_A_UART_NO_PARITY;
-    param.msborLsbFirst = EUSCI_A_UART_LSB_FIRST;
-    param.numberofStopBits = EUSCI_A_UART_ONE_STOP_BIT;
-    param.uartMode = EUSCI_A_UART_MODE;
-    param.overSampling = EUSCI_A_UART_OVERSAMPLING_BAUDRATE_GENERATION;
-
-    if(STATUS_FAIL == EUSCI_A_UART_init(EUSCI_A0_BASE, &param))
-        return;
-
-    EUSCI_A_UART_enable(EUSCI_A0_BASE);
-
-    EUSCI_A_UART_clearInterrupt(EUSCI_A0_BASE,
-                                EUSCI_A_UART_RECEIVE_INTERRUPT);
-
-    // Enable USCI_A0 RX interrupt
-    EUSCI_A_UART_enableInterrupt(EUSCI_A0_BASE,
-                                 EUSCI_A_UART_RECEIVE_INTERRUPT); // Enable interrupt
-
-    // Enable globale interrupt
-    __enable_interrupt();
-}
 
 /*
  * Real Time Clock Initialization
@@ -396,12 +357,16 @@ void enterLPM35()
 /*
  * USCI_A0 Interrupt Service Routine that receives PC GUI's commands
  */
+ 
 #pragma vector = USCI_A0_VECTOR
 __interrupt void USCI_A0_ISR(void)
 {
+    static int cnt = 0;
+    cnt++;
+    uint8_t c;
 	int i;
     switch (__even_in_range(UCA0IV, USCI_UART_UCTXCPTIFG)) {
-        case USCI_NONE: break;
+    	case USCI_NONE: break;
         case USCI_UART_UCRXIFG:
             i = EUSCI_A_UART_receiveData(EUSCI_A0_BASE);
         	if (i == '5')
@@ -409,8 +374,19 @@ __interrupt void USCI_A0_ISR(void)
             else
                 mode = i;
             __bic_SR_register_on_exit(LPM3_bits); // Exit active CPU
+
+                
+        case USCI_UART_UCTXIFG:  // TX buffer ready
+            if (RingBuffer_Read(&txBuffer, &c)) {
+                UCA0TXBUF = c;  // Send the next character
+            } else {
+                // No more data to send, disable TX interrupt
+                EUSCI_A_UART_disableInterrupt(EUSCI_A0_BASE, EUSCI_A_UART_TRANSMIT_INTERRUPT);
+            }
             break;
-        case USCI_UART_UCTXIFG: break;
+        default:
+            break;
+
         case USCI_UART_UCSTTIFG: break;
         case USCI_UART_UCTXCPTIFG: break;
     }
