@@ -82,6 +82,9 @@ uint8_t uart_puts(uint8_t *data, uint8_t length ) {
 
 }
 
+/*
+* if there is received data, return true.
+*/
 bool uart_getc(uint8_t *data) {
     // Try reading data from the RX ring buffer
     if (RingBuffer_Read(&rxBuffer, data)) {
@@ -91,3 +94,9 @@ bool uart_getc(uint8_t *data) {
     }
 }
 
+/*
+* get a ccsds packet, verify crc. return size of the packet
+*/
+uint16_t uart_get_pkt( ){
+    return 128;
+}

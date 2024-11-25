@@ -130,14 +130,16 @@ int main(void) {
     // simple test uart
     uint8_t s[] = "1234567\n\r";
     while(1){
-    uart_puts(s, sizeof(s)-1);
-    //EUSCI_A_UART_transmitData(EUSCI_A0_BASE, 0x55);
+        uint8_t c;
+        uart_puts(s, sizeof(s)-1);
 
-    //while(EUSCI_A_UART_queryStatusFlags(EUSCI_A0_BASE, EUSCI_A_UART_BUSY));
-
-    //delay
-    long long volatile cnt = 900000;
-    while(cnt--);
+        //delay and check input
+        long long volatile cnt = 900000;
+        while(cnt--) {
+            while( uart_getc(&c) ){
+                uart_putc(c);
+            }
+        }
 
     }
 
@@ -354,6 +356,7 @@ void enterLPM35()
     __no_operation();
 }
 
+bool rxOverflow = false;
 /*
  * USCI_A0 Interrupt Service Routine that receives PC GUI's commands
  */
@@ -369,11 +372,12 @@ __interrupt void USCI_A0_ISR(void)
     	case USCI_NONE: break;
         case USCI_UART_UCRXIFG:
             i = EUSCI_A_UART_receiveData(EUSCI_A0_BASE);
-        	if (i == '5')
-                pingHost = 1;
-            else
-                mode = i;
-            __bic_SR_register_on_exit(LPM3_bits); // Exit active CPU
+            if (RingBuffer_Write( &rxBuffer, i ) == true) {
+
+            }
+            else {
+                rxOverflow = true;
+            }
             break;
                 
         case USCI_UART_UCTXIFG:  // TX buffer ready
