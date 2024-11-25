@@ -130,7 +130,7 @@ int main(void) {
     // simple test uart
     uint8_t s[] = "1234567\n\r";
     while(1){
-    uart_puts(s, sizeof(s));
+    uart_puts(s, sizeof(s)-1);
     //EUSCI_A_UART_transmitData(EUSCI_A0_BASE, 0x55);
 
     //while(EUSCI_A_UART_queryStatusFlags(EUSCI_A0_BASE, EUSCI_A_UART_BUSY));
@@ -374,7 +374,7 @@ __interrupt void USCI_A0_ISR(void)
             else
                 mode = i;
             __bic_SR_register_on_exit(LPM3_bits); // Exit active CPU
-
+            break;
                 
         case USCI_UART_UCTXIFG:  // TX buffer ready
             if (RingBuffer_Read(&txBuffer, &c)) {

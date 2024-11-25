@@ -64,8 +64,9 @@ bool uart_putc(uint8_t data) {
     }else {
         //tx interrupt is disabled, meaning this is the start of tx, write uart txBuf directly and 
         // enable tx interrupt. both action together will cause Tx ISR
+        HWREG16(EUSCI_A0_BASE + OFS_UCAxTXBUF) = data; // write data first, it's important!
         EUSCI_A_UART_enableInterrupt(EUSCI_A0_BASE, EUSCI_A_UART_TRANSMIT_INTERRUPT);
-        HWREG16(EUSCI_A0_BASE + OFS_UCAxTXBUF) = data;
+        
         return true;  // Success
     }
 }
