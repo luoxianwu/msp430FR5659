@@ -46,7 +46,6 @@
 #include "FRAMLogMode.h"
 #include "driverlib.h"
 #include "uart.h"
-#include "ccsds.h"
 
 uint8_t RXData = 0;                               // UART Receive byte
 int mode = 0;                                     // mode selection variable
@@ -135,38 +134,12 @@ int main(void) {
         uart_puts(s, sizeof(s)-1);
 
         //delay and check input
-        long long volatile cnt = 90000;
+        long long volatile cnt = 900000;
         while(cnt--) {
-            if (uart_get_ccsds_pkt()) {
-                int function = ccsds_pkt.secondary.function_code;
-                int address = ccsds_pkt.secondary.address_code;
-                if( function == 0 && address == 0 ) {
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
-
-                }else
-                if( function == 0 && address == 1 ) {
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
-                }else
-                if( function == 1 && address == 0 ) {
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
-
-                }else
-                if( function == 1 && address == 1 ) {
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
-                }
-
-    /*
-                ret = exe_cmd( function, address, ret_data, ret_len );
-                pack_pkt( ret_data, ret_len );
-                uart_puts( ccsds_pkt, pkt_size );
-    */
+            while( uart_getc(&c) ){
+                uart_putc(c);
             }
         }
-
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
     }

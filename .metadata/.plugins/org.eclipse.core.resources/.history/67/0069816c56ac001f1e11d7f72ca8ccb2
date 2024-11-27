@@ -6,6 +6,9 @@
 
 #define ASSERT(x) if(!(x)) printf("Assert failed: %s, File: %s, Line: %d\n", #x, __FILE__, __LINE__)
 
+#define PRIMARY_HEADER_SIZE 6
+#define SECONDARY_HEADER_SIZE 10
+#define MAX_DATA_SIZE 256
 
 extern bool uart_getc( uint8_t * c);
 
