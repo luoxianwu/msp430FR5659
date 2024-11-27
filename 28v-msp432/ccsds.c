@@ -50,7 +50,7 @@ bool uart_get_ccsds_pkt() {
             pkt_byte[bytes_received++] = byte;
             if (bytes_received == PRIMARY_HEADER_SIZE) {
                 // Convert data length from big-endian
-                data_length = pkt_byte[4] << 8 + pkt_byte[5] + 1; 
+                data_length = pkt_byte[4] + (pkt_byte[5]<<8) + 1;
                 state = STATE_SECONDARY_HEADER;
             }
             break;
@@ -64,7 +64,8 @@ bool uart_get_ccsds_pkt() {
 
         case STATE_DATA:
             pkt_byte[bytes_received++] = byte;
-            if (bytes_received == data_length - PRIMARY_HEADER_SIZE + SECONDARY_HEADER_SIZE) {
+            if (bytes_received == PRIMARY_HEADER_SIZE + data_length ) {
+                state = STATE_IDLE;
                 return true;
             }
             break;

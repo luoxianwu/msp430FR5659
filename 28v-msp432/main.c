@@ -138,7 +138,7 @@ int main(void) {
         long long volatile cnt = 90000;
         while(cnt--) {
             if (uart_get_ccsds_pkt()) {
-                int function = ccsds_pkt.secondary.function_code;
+                uint8_t function = ccsds_pkt.secondary.function_code;
                 int address = ccsds_pkt.secondary.address_code;
                 if( function == 0 && address == 0 ) {
                     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
@@ -167,7 +167,7 @@ int main(void) {
             }
         }
 
-        GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+        //GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
     }
 
