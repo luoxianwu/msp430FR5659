@@ -13,5 +13,7 @@ uint8_t uart_puts(uint8_t *data, uint8_t length );
  
 bool uart_getc(uint8_t *data);
 
+void uart_printf(const char *format, ...);
+
 #endif //__UART_H__
 

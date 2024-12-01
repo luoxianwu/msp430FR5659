@@ -100,3 +100,26 @@ bool uart_getc(uint8_t *data) {
 uint16_t uart_get_pkt( ){
     return 128;
 }
+
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+
+
+// UART printf implementation
+void uart_printf(const char *format, ...) {
+    char buffer[128]; // Buffer to hold the formatted string
+    va_list args;     // Variable argument list
+
+    // Initialize the argument list
+    va_start(args, format);
+
+    // Format the string into the buffer
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    // Clean up the argument list
+    va_end(args);
+
+    // Send the formatted string over UART
+    uart_puts((uint8_t*)buffer, strlen(buffer));
+}
