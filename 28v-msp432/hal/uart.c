@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 
 #include "ring_buffer.h"
 #include "uart.h"
@@ -101,9 +104,7 @@ uint16_t uart_get_pkt( ){
     return 128;
 }
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
+
 
 
 // UART printf implementation
