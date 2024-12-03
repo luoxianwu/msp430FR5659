@@ -3,7 +3,9 @@
 
 void init_ADC(void);
 
-uint16_t adc_read( uint8_t channel );
+void adc_start(void);
+
+bool adc_read_all( uint16_t array[], uint8_t cnt );
 
 
 #endif //__ADC_H__

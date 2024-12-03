@@ -139,6 +139,36 @@ void init_ADC(void)
 
 }
 
+void adc_start(void){
+    //Enable/Start sampling and conversion
+    /*
+     * Base address of ADC12B Module
+     * Start the conversion into memory buffer 0
+     * Use the single-channel, single-conversion mode
+     */
+    ADC12_B_startConversion(ADC12_B_BASE,
+        ADC12_B_MEMORY_0,
+        ADC12_B_SEQOFCHANNELS);
+}
+
+
+/*
+ * when return true, read success
+ */
+bool adc_read_all( uint16_t array[], uint8_t cnt )
+{
+    int i = 0;
+    if( ADC12_B_getInterruptStatus(ADC12_B_BASE, 0, ADC12_B_IFG0) == 0 ){
+        return false;
+    }
+    for( i = 0; i < cnt; i++ ){
+        array[i] = ADC12_B_getResults(ADC12_B_BASE, 2*i);
+    }
+
+    return true;
+
+}
+
 
 
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)

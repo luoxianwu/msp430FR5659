@@ -102,7 +102,7 @@ int main(void) {
     // simple test uart
     uint8_t s[] = "1234567\n\r";
     while(1){
-        uint8_t c;
+        uint16_t adc_ch[1];
         uart_puts(s, sizeof(s)-1);
 
         //delay and check input
@@ -138,35 +138,16 @@ int main(void) {
             }
 
 
+
         }
 
-        {
-            __delay_cycles(5000);
-
-            //Enable/Start sampling and conversion
-            /*
-             * Base address of ADC12B Module
-             * Start the conversion into memory buffer 0
-             * Use the single-channel, single-conversion mode
-             */
-            ADC12_B_startConversion(ADC12_B_BASE,
-                ADC12_B_MEMORY_0,
-                ADC12_B_SINGLECHANNEL);
-
-            volatile int c = 0;
-            while( ADC12_B_getInterruptStatus(ADC12_B_BASE, 0, ADC12_B_IFG0) == 0 ){
-                c++;
-            }
-            uint16_t x = ADC12_B_getResults(ADC12_B_BASE, ADC12_B_MEMORY_0);
-            uint32_t y = (uint32_t)x * 36;
-            uint32_t v = y/4095;
-            uint32_t a = v/10;
-            uint32_t b = v%10;
-
-
-            uart_printf("P1.1(A1) : %d.", a);
-            uart_printf("%dv\n\r", b);
+        adc_start();
+        if( adc_read_all( adc_ch, 1) ) {
+            uint32_t x = (uint32_t)adc_ch[0] * 36;
+            x = x/4095;
+            uart_printf("%d\n\r", x);
         }
+
 
     }
 
