@@ -51,6 +51,7 @@
 //
 //******************************************************************************
 #include "driverlib.h"
+#include "uart.h"
 
 
 void init_ADC(void)
@@ -127,31 +128,15 @@ void init_ADC(void)
         0,
         ADC12_B_IFG0
         );
-
+/*
     //Enable memory buffer 0 interrupt
     ADC12_B_enableInterrupt(ADC12_B_BASE,
       ADC12_B_IE0,
       0,
       0);
+*/
 
 
-    while (1)
-    {
-        __delay_cycles(5000);
-
-        //Enable/Start sampling and conversion
-        /*
-         * Base address of ADC12B Module
-         * Start the conversion into memory buffer 0
-         * Use the single-channel, single-conversion mode
-         */
-        ADC12_B_startConversion(ADC12_B_BASE,
-            ADC12_B_MEMORY_0,
-            ADC12_B_SINGLECHANNEL);
-
-        __bis_SR_register(LPM0_bits + GIE);     // LPM0, ADC12_B_ISR will force exit
-        __no_operation();                       // For debugger
-    }
 }
 
 
