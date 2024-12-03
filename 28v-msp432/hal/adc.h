@@ -1,7 +1,7 @@
 #ifndef __ADC_H__
 #define __ADC_H__
 
-void init_ADC() {};
+void init_ADC(void);
 
 uint16_t adc_read( uint8_t channel );
 

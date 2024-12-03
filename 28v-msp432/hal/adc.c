@@ -52,34 +52,10 @@
 //******************************************************************************
 #include "driverlib.h"
 
-#if 0
 
-void main(void)
+void init_ADC(void)
 {
-    // Stop WDT
-    WDT_A_hold(WDT_A_BASE);
 
-    //Set P1.0 as an output pin.
-    /*
-
-     * Select Port 1
-     * Set Pin 0 as output
-     */
-    GPIO_setAsOutputPin(
-            GPIO_PORT_P1,
-            GPIO_PIN0
-    );
-
-    //Set P1.0 as Output Low.
-    /*
-
-    * Select Port 1
-    * Set Pin 0 to output Low.
-    */
-    GPIO_setOutputHighOnPin(
-        GPIO_PORT_P1,
-        GPIO_PIN0
-    );
     //Set P1.1 as Ternary Module Function Output.
     /*
 
@@ -178,7 +154,7 @@ void main(void)
     }
 }
 
-#endif //0
+
 
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector=ADC12_VECTOR
