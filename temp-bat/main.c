@@ -30,15 +30,17 @@ int main(void) {
     ADC12MCTL0 = ADC12VRSEL_1 + ADC12INCH_30;      //  VR+ = VREF(1.2V) buffered, VR- = AVSS, Temperature sensor
     ADC12MCTL1 = ADC12VRSEL_0 + ADC12INCH_31 + ADC12EOS;  //  VR+ = AVCC, VR- = AVSS. Internal battery monitor, end of sequence
 
-    ADC12IER0 = 0x003;           // Enable ADC12IFG0 and ADC12IFG1
+    //ADC12IER0 = 0x003;           // Enable ADC12IFG0 and ADC12IFG1
 
     while(!(REFCTL0 & REFGENRDY));  // Wait for reference generator
     ADC12CTL0 |= ADC12ENC;       // Enable ADC
 
     while(1) {
         ADC12CTL0 |= ADC12SC;    // Start sampling/conversion
-        __bis_SR_register(LPM0_bits + GIE);  // Enter LPM0 with interrupts
-        __no_operation();
+
+        while( !(ADC12IFGR0 & 0x02) ); // wait for sequence convert finish
+        temp = ADC12MEM0;
+        batt = ADC12MEM1;
 
         // Calculate temperature
         temperatureDegC = (float)(((long)temp - CALADC12_12V_30C) * (85 - 30)) /
