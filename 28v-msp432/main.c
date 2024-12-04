@@ -106,7 +106,7 @@ int main(void) {
         //uart_puts(s, sizeof(s)-1);
 
         //delay and check input
-        long long volatile cnt = 120000;
+        long long volatile cnt = 500000;
         while(cnt--) {
             if (uart_get_ccsds_pkt()) {
                 uint8_t function = ccsds_pkt.secondary.function_code;
@@ -154,8 +154,8 @@ int main(void) {
                 uart_printf("0x%x ", adc_ch[i]);
             }
             uart_printf("\n\r");
-            //uart_printf(" board temperature : %dC\n\r", x);
-            //uart_printf("VCC/2 : %dmv\n\r", y);
+            uart_printf(" board temperature : %dC\n\r", x);
+            uart_printf("VCC/2 : %dmv\n\r", y);
             uart_printf("P1.2 :  %dmv\n\r", adc_to_voltage( adc_ch[0] ));
         }
 

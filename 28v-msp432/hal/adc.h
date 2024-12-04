@@ -1,7 +1,7 @@
 #ifndef __ADC_H__
 #define __ADC_H__
 
-#define ADC_TOTAL_CH  3
+#define ADC_TOTAL_CH  8
 
 void init_ADC(void);
 
