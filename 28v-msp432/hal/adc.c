@@ -53,6 +53,53 @@
 #include "driverlib.h"
 #include "uart.h"
 
+#define CALADC12_12V_30C *((unsigned int *)0x1A1A)  // Temperature Sensor Calibration-30 C
+#define CALADC12_12V_85C *((unsigned int *)0x1A1C)  // Temperature Sensor Calibration-85 C
+
+// measure VCC on board, it's 3.6v, rather than 3.3v
+#define AVCC (3600)   //mv
+
+unsigned int temp;
+unsigned int batt;
+volatile float temperatureDegC;
+volatile float batteryVoltage;
+
+void init_ADC2(void)
+{
+    // Configure P1.2 to P1.7 for analog inputs
+    P1SEL0 |= BIT2 ;
+    P1SEL1 |= BIT2 ;
+
+    // Ensure P1.2 to P1.7 are set as inputs
+    P1DIR &= ~BIT2;
+
+    // Initialize reference
+    while(REFCTL0 & REFGENBUSY);  // Wait if ref generator busy
+    REFCTL0 |= REFVSEL_0 + REFON; // Enable internal 1.2V reference
+
+    // Initialize ADC12
+    ADC12CTL0 &= ~ADC12ENC;      // Disable ADC12
+    ADC12CTL0 = ADC12SHT0_8 + ADC12ON + ADC12MSC;  // Set sample time
+    ADC12CTL1 = ADC12SHP + ADC12CONSEQ_1;          // Sample timer, sequence mode
+    ADC12CTL3 = ADC12TCMAP | ADC12BATMAP;      // Enable temperature sensor
+
+    // Configure channels
+    ADC12MCTL0 = ADC12VRSEL_0 + ADC12INCH_2;              //  VR+ = AVCC, VR- = AVSS. A2 input,
+    ADC12MCTL1 = ADC12VRSEL_0 + ADC12INCH_3;              //  VR+ = AVCC, VR- = AVSS. A3 input,
+    ADC12MCTL2 = ADC12VRSEL_0 + ADC12INCH_4;              //  VR+ = AVCC, VR- = AVSS. A4 input,
+    ADC12MCTL3 = ADC12VRSEL_0 + ADC12INCH_5;              //  VR+ = AVCC, VR- = AVSS. A5 input,
+    ADC12MCTL4 = ADC12VRSEL_0 + ADC12INCH_6;              //  VR+ = AVCC, VR- = AVSS. A6 input,
+    ADC12MCTL5 = ADC12VRSEL_0 + ADC12INCH_7;              //  VR+ = AVCC, VR- = AVSS. A7 input,
+
+    ADC12MCTL1 = ADC12VRSEL_1 + ADC12INCH_30;             //  VR+ = VREF(1.2V) buffered, VR- = AVSS, Temperature sensor
+    ADC12MCTL2 = ADC12VRSEL_0 + ADC12INCH_31 + ADC12EOS;  //  VR+ = AVCC, VR- = AVSS. Internal battery monitor, end of sequence
+
+    //clear interrupt flags ( also used as convertion finish flag )
+    ADC12IFGR0 = 0;
+
+    while(!(REFCTL0 & REFGENRDY));  // Wait for reference generator
+    ADC12CTL0 |= ADC12ENC;       // Enable ADC
+}
 
 void init_ADC(void)
 {
@@ -66,6 +113,15 @@ void init_ADC(void)
     GPIO_setAsPeripheralModuleFunctionOutputPin(
         GPIO_PORT_P1,
         GPIO_PIN1,
+        GPIO_TERNARY_MODULE_FUNCTION
+    );
+
+    /* Select Port 1
+    * Set Pin 2 to output Ternary Module Function, (A1, C1, VREF+, VeREF+).
+    */
+    GPIO_setAsPeripheralModuleFunctionOutputPin(
+        GPIO_PORT_P1,
+        GPIO_PIN2,
         GPIO_TERNARY_MODULE_FUNCTION
     );
 
@@ -123,6 +179,12 @@ void init_ADC(void)
     configureMemoryParam.differentialModeSelect = ADC12_B_DIFFERENTIAL_MODE_DISABLE;
     ADC12_B_configureMemory(ADC12_B_BASE, &configureMemoryParam);
 
+    // Map input A2 to memory buffer 1
+    configureMemoryParam.memoryBufferControlIndex = ADC12_B_MEMORY_1;
+    configureMemoryParam.inputSourceSelect = ADC12_B_INPUT_A2;
+    configureMemoryParam.endOfSequence = ADC12_B_ENDOFSEQUENCE;
+    ADC12_B_configureMemory(ADC12_B_BASE, &configureMemoryParam);
+
 
     ADC12_B_clearInterrupt(ADC12_B_BASE,
         0,
@@ -140,15 +202,7 @@ void init_ADC(void)
 }
 
 void adc_start(void){
-    //Enable/Start sampling and conversion
-    /*
-     * Base address of ADC12B Module
-     * Start the conversion into memory buffer 0
-     * Use the single-channel, single-conversion mode
-     */
-    ADC12_B_startConversion(ADC12_B_BASE,
-        ADC12_B_MEMORY_0,
-        ADC12_B_SEQOFCHANNELS);
+    ADC12CTL0 |= ADC12SC;    // Start sampling/conversion
 }
 
 
@@ -158,11 +212,15 @@ void adc_start(void){
 bool adc_read_all( uint16_t array[], uint8_t cnt )
 {
     int i = 0;
-    if( ADC12_B_getInterruptStatus(ADC12_B_BASE, 0, ADC12_B_IFG0) == 0 ){
+    uint16_t last_channel_flag = 1 << cnt;
+
+    // if all convert finish
+    if( ADC12IFGR0 & last_channel_flag == 0 ){
         return false;
     }
+    volatile uint16_t *p_adc_results = &ADC12MEM0;
     for( i = 0; i < cnt; i++ ){
-        array[i] = ADC12_B_getResults(ADC12_B_BASE, 2*i);
+        array[i] = *p_adc_results++;
     }
 
     return true;
@@ -170,6 +228,26 @@ bool adc_read_all( uint16_t array[], uint8_t cnt )
 }
 
 
+
+/*
+ * convert adc_to_temperature
+ */
+uint16_t adc_board_temperature( uint16_t adc_value ){
+
+    int32_t x = ((uint32_t)adc_value - CALADC12_12V_30C) * (85 - 30);
+    return x/(CALADC12_12V_85C - CALADC12_12V_30C) + 30;
+
+}
+
+
+/*
+ * calculate in 32 bits, avoid overflow
+ */
+uint16_t adc_to_voltage( uint16_t adc_value ){
+    uint32_t x = (uint32_t)adc_value * AVCC;
+    return x / 4095;
+
+}
 
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
 #pragma vector=ADC12_VECTOR

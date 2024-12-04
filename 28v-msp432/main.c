@@ -87,7 +87,7 @@ int main(void) {
     Init_GPIO();
     Init_Clock();
     Init_UART();
-    init_ADC();
+    init_ADC2();
 
 
     // Select UART TXD on P2.0
@@ -102,11 +102,11 @@ int main(void) {
     // simple test uart
     uint8_t s[] = "1234567\n\r";
     while(1){
-        uint16_t adc_ch[1];
-        uart_puts(s, sizeof(s)-1);
+        uint16_t adc_ch[8];
+        //uart_puts(s, sizeof(s)-1);
 
         //delay and check input
-        long long volatile cnt = 90000;
+        long long volatile cnt = 120000;
         while(cnt--) {
             if (uart_get_ccsds_pkt()) {
                 uint8_t function = ccsds_pkt.secondary.function_code;
@@ -142,10 +142,21 @@ int main(void) {
         }
 
         adc_start();
-        if( adc_read_all( adc_ch, 1) ) {
-            uint32_t x = (uint32_t)adc_ch[0] * 36;
-            x = x/4095;
-            uart_printf("%d\n\r", x);
+        if( adc_read_all( adc_ch, ADC_TOTAL_CH ) ) {
+            int i = 0;
+            uint16_t temp = adc_ch[ADC_TOTAL_CH - 2];
+            uint16_t bat_voltage = adc_ch[ADC_TOTAL_CH - 1];
+
+            uint16_t x = adc_board_temperature( temp );
+            uint16_t y = adc_to_voltage( bat_voltage );
+
+            for( i = 0; i < ADC_TOTAL_CH; i++ ) {
+                uart_printf("0x%x ", adc_ch[i]);
+            }
+            uart_printf("\n\r");
+            //uart_printf(" board temperature : %dC\n\r", x);
+            //uart_printf("VCC/2 : %dmv\n\r", y);
+            uart_printf("P1.2 :  %dmv\n\r", adc_to_voltage( adc_ch[0] ));
         }
 
 
