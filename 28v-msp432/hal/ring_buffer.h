@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define BUFFER_SIZE 32  // Size of the ring buffer (must be a power of 2 for simplicity)
+#define BUFFER_SIZE 64  // Size of the ring buffer (must be a power of 2 for simplicity)
 
 typedef struct {
     volatile uint8_t buffer[BUFFER_SIZE];  // Storage array

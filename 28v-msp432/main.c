@@ -4,7 +4,7 @@
  * Luo, xianwu
  *
  ******************************************************************************/
-
+#include <stddef.h>
 #include "main.h"
 #include "LiveTempMode.h"
 #include "FRAMLogMode.h"
@@ -12,6 +12,9 @@
 #include "uart.h"
 #include "ccsds.h"
 #include "adc.h"
+#include "tmtc.h"
+#include "util.h"
+
 
 uint8_t RXData = 0;                               // UART Receive byte
 int mode = 0;                                     // mode selection variable
@@ -99,48 +102,45 @@ int main(void) {
 
 
     uart_printf("---------%s%d-----------\n\r", "MSP", 430);
-    // simple test uart
-    uint8_t s[] = "1234567\n\r";
+
     while(1){
-        uint16_t adc_ch[8];
-        //uart_puts(s, sizeof(s)-1);
+        uint16_t adc_ch[ADC_TOTAL_CH];
+        uint8_t  user_data[MAX_DATA_SIZE];
+        int ret;
 
-        //delay and check input
-        long long volatile cnt = 500000;
-        while(cnt--) {
-            if (uart_get_ccsds_pkt()) {
-                uint8_t function = ccsds_pkt.secondary.function_code;
-                int address = ccsds_pkt.secondary.address_code;
-                if( function == 0 && address == 0 ) {
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
+        // check ccsds packet
 
-                }else
-                if( function == 0 && address == 1 ) {
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
-                }else
-                if( function == 1 && address == 0 ) {
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6);
+        if (uart_get_ccsds_pkt()) {
+            uint8_t function = ccsds_pkt.secondary.function_code;
+            uint16_t address = ccsds_pkt.secondary.address_code;
+            address = swap_bytes16(address);
 
-                }else
-                if( function == 1 && address == 1 ) {
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
+            volatile uint8_t multi_field  = ccsds_pkt.primary.ver_type_sec_apid;
+            volatile uint8_t ver = CCSDS_VERSION(multi_field);
+            volatile uint8_t type = CCSDS_TYPE(multi_field);
+            volatile uint8_t second_header = CCSDS_SEC_HDR(multi_field);
+            volatile  uint16_t apid = ccsds_pkt.primary.apid_lo;
+            apid += (uint16_t)CCSDS_APID_H(multi_field)<<8;
+            if ( ver == 0 && apid == 0x123 ){
+                if( type == TYPE_TC ){ //telecommand
+                    ret = tmtc_exe_cmd( function, address );
+                }
+                else{ // telemetery
+                    ret = tmtc_get_data( function, address, user_data, sizeof(user_data) );
+                    if (ret != 0) {
+                        uint32_t data_len = ret;
+                        size_t pkt_len = ccdss_pack_data(user_data, data_len);
+                        uart_puts( (uint8_t*)&ccsds_pkt_response,  pkt_len );
+
+                    }
+
                 }
 
-    /*
-                ret = exe_cmd( function, address, ret_data, ret_len );
-                pack_pkt( ret_data, ret_len );
-                uart_puts( ccsds_pkt, pkt_size );
-    */
             }
-
-
 
         }
 
+        // check ADC convert
         adc_start();
         if( adc_read_all( adc_ch, ADC_TOTAL_CH ) ) {
             int i = 0;
@@ -149,7 +149,7 @@ int main(void) {
 
             uint16_t x = adc_board_temperature( temp );
             uint16_t y = adc_to_voltage( bat_voltage );
-
+/*
             for( i = 0; i < ADC_TOTAL_CH; i++ ) {
                 uart_printf("0x%x ", adc_ch[i]);
             }
@@ -157,6 +157,7 @@ int main(void) {
             uart_printf(" board temperature : %dC\n\r", x);
             uart_printf("VCC/2 : %dmv\n\r", y);
             uart_printf("P1.2 :  %dmv\n\r", adc_to_voltage( adc_ch[0] ));
+*/
         }
 
 
