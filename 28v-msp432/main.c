@@ -14,6 +14,7 @@
 #include "adc.h"
 #include "tmtc.h"
 #include "util.h"
+#include "timer.h"
 
 
 uint8_t RXData = 0;                               // UART Receive byte
@@ -91,6 +92,7 @@ int main(void) {
     Init_Clock();
     Init_UART();
     init_ADC2();
+    init_timer();
 
 
     // Select UART TXD on P2.0
@@ -121,6 +123,7 @@ int main(void) {
             volatile uint8_t second_header = CCSDS_SEC_HDR(multi_field);
             volatile  uint16_t apid = ccsds_pkt.primary.apid_lo;
             apid += (uint16_t)CCSDS_APID_H(multi_field)<<8;
+
             if ( ver == 0 && apid == 0x123 ){
                 if( type == TYPE_TC ){ //telecommand
                     ret = tmtc_exe_cmd( function, address );
@@ -140,26 +143,14 @@ int main(void) {
 
         }
 
-        // check ADC convert
-        adc_start();
-        if( adc_read_all( adc_ch, ADC_TOTAL_CH ) ) {
-            int i = 0;
-            uint16_t temp = adc_ch[ADC_TOTAL_CH - 2];
-            uint16_t bat_voltage = adc_ch[ADC_TOTAL_CH - 1];
-
-            uint16_t x = adc_board_temperature( temp );
-            uint16_t y = adc_to_voltage( bat_voltage );
-/*
+        if (adc_refreshed) {
+            int i;
             for( i = 0; i < ADC_TOTAL_CH; i++ ) {
-                uart_printf("0x%x ", adc_ch[i]);
+                uart_printf("CH%d = 0x%x\n\r", i, adc_channels[i]);
             }
+            adc_refreshed = false;
             uart_printf("\n\r");
-            uart_printf(" board temperature : %dC\n\r", x);
-            uart_printf("VCC/2 : %dmv\n\r", y);
-            uart_printf("P1.2 :  %dmv\n\r", adc_to_voltage( adc_ch[0] ));
-*/
         }
-
 
     }
 
@@ -417,16 +408,6 @@ __interrupt void USCI_A0_ISR(void)
 }
 
 
-/*
- * Timer0_A3 Interrupt Vector (TAIV) handler
- * Used to trigger ADC conversion every 0.125 seconds
- *
- */
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TIMER0_A0_ISR(void)
-{
-    __bic_SR_register_on_exit(LPM3_bits); // Exit active CPU
-}
 
 /*
  * Port 1 interrupt service routine to handle S2 button press

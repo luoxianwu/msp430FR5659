@@ -4,6 +4,7 @@
  *  Created on: Dec 4, 2024
  *      Author: x-luo
  */
+#define FUNC_ADC 0x10
 
 #include "gpio.h"
 
@@ -29,8 +30,22 @@ int tmtc_exe_cmd( uint8_t function, uint16_t address ){
     return 0;
 }
 
+/*
+ * read ADC
+ * ADC value was refreshed every 50ms.
+ */
+
+
 int tmtc_get_data( uint8_t function, uint16_t address, uint8_t * buffer, uint16_t sizeof_buf ){
-    return 1;
+    switch( function){
+        case FUNC_ADC:
+            adc_get_channels( buffer, sizeof_buf );
+            break;
+        default:
+            break;
+    }
+        return 1;
+
 }
 
 int tmtc_pack_data( uint8_t buf[], uint8_t size){

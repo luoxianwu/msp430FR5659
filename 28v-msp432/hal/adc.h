@@ -3,6 +3,9 @@
 
 #define ADC_TOTAL_CH  8
 
+extern uint16_t adc_channels[ADC_TOTAL_CH];
+extern bool     adc_refreshed;
+
 void init_ADC(void);
 
 void init_ADC2(void);
@@ -10,6 +13,8 @@ void init_ADC2(void);
 void adc_start(void);
 
 bool adc_read_all( uint16_t array[], uint8_t cnt );
+
+bool adc_get_channels( uint16_t array[], uint8_t cnt );
 
 uint16_t adc_to_voltage( uint16_t adc_value );
 

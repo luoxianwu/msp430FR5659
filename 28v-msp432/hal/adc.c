@@ -1,34 +1,7 @@
-/* --COPYRIGHT--,BSD
- * Copyright (c) 2017, Texas Instruments Incorporated
- * All rights reserved.
+/*
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
  *
- * *  Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * *  Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * *  Neither the name of Texas Instruments Incorporated nor the names of
- *    its contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * --/COPYRIGHT--*/
+*/
 //******************************************************************************
 //  MSP430FR59xx Demo - ADC12B, Sample A1, AVcc Ref, Set P1.0 if A1 > 0.5*AVcc
 //
@@ -52,6 +25,8 @@
 //******************************************************************************
 #include "driverlib.h"
 #include "uart.h"
+#include "adc.h"
+#include "util.h"
 
 #define CALADC12_12V_30C *((unsigned int *)0x1A1A)  // Temperature Sensor Calibration-30 C
 #define CALADC12_12V_85C *((unsigned int *)0x1A1C)  // Temperature Sensor Calibration-85 C
@@ -59,10 +34,17 @@
 // measure VCC on board, it's 3.6v, rather than 3.3v
 #define AVCC (3600)   //mv
 
+
+uint16_t adc_channels[ADC_TOTAL_CH];
+bool     adc_refreshed = false;
+
+
 unsigned int temp;
 unsigned int batt;
 volatile float temperatureDegC;
 volatile float batteryVoltage;
+
+
 
 void init_ADC2(void)
 {
@@ -96,6 +78,8 @@ void init_ADC2(void)
 
     //clear interrupt flags ( also used as convertion finish flag )
     ADC12IFGR0 = 0;
+
+    ADC12IER0 = ADC12IE7;           // Enable interrupt for MEM7
 
     while(!(REFCTL0 & REFGENRDY));  // Wait for reference generator
     ADC12CTL0 |= ADC12ENC;       // Enable ADC
@@ -207,21 +191,35 @@ void adc_start(void){
 
 
 /*
- * when return true, read success
+ * when convertion finished, read all value from ADC memory to local variables
  */
-bool adc_read_all( uint16_t array[], uint8_t cnt )
+bool adc_read_all_channels()
 {
     int i = 0;
-    uint16_t last_channel_flag = 1 << cnt;
+    uint16_t last_channel_flag = 1 << ADC_TOTAL_CH;
 
     // if all convert finish
     if( ADC12IFGR0 & last_channel_flag == 0 ){
         return false;
     }
-    volatile uint16_t *p_adc_results = &ADC12MEM0;
-    for( i = 0; i < cnt; i++ ){
-        array[i] = *p_adc_results++;
+    volatile uint16_t *p_adc_result = &ADC12MEM0;
+    for( i = 0; i < ADC_TOTAL_CH; i++ ){
+        adc_channels[i] = *p_adc_result++;
     }
+
+    return true;
+
+}
+
+/*
+ * when return true, read success
+ */
+bool adc_get_channels( uint16_t array[], uint8_t cnt )
+{
+    ASSERT( cnt >= ADC_TOTAL_CH );
+    //disable ADC interrupt
+    memcpy( array, adc_channels, ADC_TOTAL_CH );
+    // enable ADC interrupt
 
     return true;
 
@@ -265,44 +263,23 @@ void ADC12_ISR(void)
     case  6: break;                         // Vector  6:  ADC12BHI
     case  8: break;                         // Vector  8:  ADC12BLO
     case 10: break;                         // Vector 10:  ADC12BIN
-    case 12:                                // Vector 12:  ADC12BMEM0 Interrupt
-    {
-      if (ADC12_B_getResults(ADC12_B_BASE, ADC12_B_MEMORY_0) >= 0x7ff)
-      {
-            //Set P1.0 LED on
-            /*
-
-            * Select Port 1
-            * Set Pin 0 to output high.
-            */
-            GPIO_setOutputHighOnPin(
-                GPIO_PORT_P1,
-                GPIO_PIN0
-            );
-      }
-      else
-      {
-        //Set P1.0 LED off
-        /*
-
-        * Select Port 1
-        * Set Pin 0 to output high.
-        */
-        GPIO_setOutputLowOnPin(
-            GPIO_PORT_P1,
-            GPIO_PIN0
-        );
-      }
-          __bic_SR_register_on_exit(LPM0_bits); // Exit active CPU
-      break;                                // Clear CPUOFF bit from 0(SR)
-    }
+    case 12: break;                         // Vector 12:  ADC12BMEM0 Interrupt
     case 14: break;                         // Vector 14:  ADC12BMEM1
     case 16: break;                         // Vector 16:  ADC12BMEM2
     case 18: break;                         // Vector 18:  ADC12BMEM3
     case 20: break;                         // Vector 20:  ADC12BMEM4
     case 22: break;                         // Vector 22:  ADC12BMEM5
     case 24: break;                         // Vector 24:  ADC12BMEM6
-    case 26: break;                         // Vector 26:  ADC12BMEM7
+    case 26:                                // Vector 26:  ADC12BMEM7
+    {
+        unsigned int i = 0;
+        volatile uint16_t *p_adc_reg = &ADC12MEM0;
+        for( i = 0; i < ADC_TOTAL_CH; i++ ) {
+            adc_channels[i] = p_adc_reg[i];
+        }
+        P2OUT ^= BIT4;               // Toggle P2.4
+        adc_refreshed = true;
+    }
     case 28: break;                         // Vector 28:  ADC12BMEM8
     case 30: break;                         // Vector 30:  ADC12BMEM9
     case 32: break;                         // Vector 32:  ADC12BMEM10
