@@ -48,12 +48,19 @@ volatile float batteryVoltage;
 
 void init_ADC2(void)
 {
-    // Configure P1.2 to P1.7 for analog inputs
-    P1SEL0 |= BIT2 | BIT3 | BIT4 | BIT5 |BIT6 | BIT7 ;
-    P1SEL1 |= BIT2 | BIT3 | BIT4 | BIT5 |BIT6 | BIT7 ;
+    // Configure P1.2 to P1.5 for analog inputs
+    P1SEL0 |= BIT2 | BIT3 | BIT4 | BIT5 ;
+    P1SEL1 |= BIT2 | BIT3 | BIT4 | BIT5 ;
 
-    // Ensure P1.2 to P1.7 are set as inputs
-    P1DIR &= ~(BIT2 | BIT3 | BIT4 | BIT5 |BIT6 | BIT7);
+    // Ensure P1.2 to P1.5 are set as inputs
+    P1DIR &= ~(BIT2 | BIT3 | BIT4 | BIT5 );
+
+    // Configure P4.2(), P4.3 to P1.5 for analog inputs
+    P4SEL0 |= BIT2 | BIT3 ;
+    P4SEL1 |= BIT2 | BIT3 ;
+
+    // Ensure P4.2 to P4.3 are set as inputs
+    P4DIR &= ~(BIT2 | BIT3 );
 
     // Initialize reference
     while(REFCTL0 & REFGENBUSY);  // Wait if ref generator busy
@@ -70,8 +77,8 @@ void init_ADC2(void)
     ADC12MCTL1 = ADC12VRSEL_0 + ADC12INCH_3;              //  VR+ = AVCC, VR- = AVSS. A3 input,
     ADC12MCTL2 = ADC12VRSEL_0 + ADC12INCH_4;              //  VR+ = AVCC, VR- = AVSS. A4 input,
     ADC12MCTL3 = ADC12VRSEL_0 + ADC12INCH_5;              //  VR+ = AVCC, VR- = AVSS. A5 input,
-    ADC12MCTL4 = ADC12VRSEL_0 + ADC12INCH_6;              //  VR+ = AVCC, VR- = AVSS. A6 input,
-    ADC12MCTL5 = ADC12VRSEL_0 + ADC12INCH_7;              //  VR+ = AVCC, VR- = AVSS. A7 input,
+    ADC12MCTL4 = ADC12VRSEL_0 + ADC12INCH_10;             //  VR+ = AVCC, VR- = AVSS. A10 input,
+    ADC12MCTL5 = ADC12VRSEL_0 + ADC12INCH_11;             //  VR+ = AVCC, VR- = AVSS. A11 input,
 
     ADC12MCTL6 = ADC12VRSEL_1 + ADC12INCH_30;             //  VR+ = VREF(1.2V) buffered, VR- = AVSS, Temperature sensor
     ADC12MCTL7 = ADC12VRSEL_0 + ADC12INCH_31 + ADC12EOS;  //  VR+ = AVCC, VR- = AVSS. Internal battery monitor, end of sequence

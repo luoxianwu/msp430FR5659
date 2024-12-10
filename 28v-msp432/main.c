@@ -148,6 +148,14 @@ int main(void) {
             for( i = 0; i < ADC_TOTAL_CH; i++ ) {
                 uart_printf("CH%d = 0x%x\n\r", i, adc_channels[i]);
             }
+            uint16_t raw_temp = adc_channels[6];
+            uint16_t raw_voltage = adc_channels[7];
+            uint16_t degC = adc_board_temperature( raw_temp );
+            uint16_t voltage = adc_to_voltage( raw_voltage );
+            uart_printf("on board temperature : %d C\n\r", degC);
+            uart_printf("board VCC : %d mv\n\r", voltage*2);
+            uart_printf("P1.2(A2) : %d mv\n\r", adc_to_voltage(adc_channels[0]));
+
             adc_refreshed = false;
             uart_printf("\n\r");
         }
