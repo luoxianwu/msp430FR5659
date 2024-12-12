@@ -14,7 +14,9 @@ void adc_start(void);
 
 bool adc_read_all( uint16_t array[], uint8_t cnt );
 
-bool adc_get_channels( uint16_t array[], uint8_t cnt );
+uint16_t adc_get_channels( uint16_t array[], uint8_t cnt );
+
+uint16_t adc_get_channels_big_endian( uint16_t buf[], uint8_t buf_size );
 
 uint16_t adc_to_voltage( uint16_t adc_value );
 

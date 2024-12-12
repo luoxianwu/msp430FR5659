@@ -219,20 +219,41 @@ bool adc_read_all_channels()
 }
 
 /*
- * when return true, read success
+ * when return number of bytes
  */
-bool adc_get_channels( uint16_t array[], uint8_t cnt )
+uint16_t adc_get_channels( uint16_t buf[], uint8_t buf_size )
 {
-    ASSERT( cnt >= ADC_TOTAL_CH );
-    //disable ADC interrupt
-    memcpy( array, adc_channels, ADC_TOTAL_CH );
-    // enable ADC interrupt
 
-    return true;
+    uint16_t bytes_cnt = ADC_TOTAL_CH * 2;
+    ASSERT( buf_size >= bytes_cnt );
+    //disable ADC interrupt
+    ADC12IER0 &= ~ADC12IE7;           // Enable interrupt for MEM7
+
+    memcpy( buf, adc_channels, bytes_cnt );
+    // enable ADC interrupt
+    ADC12IER0 |= ADC12IE7;           // Enable interrupt for MEM7
+
+    return bytes_cnt;
 
 }
 
+uint16_t adc_get_channels_big_endian( uint16_t buf[], uint8_t buf_size )
+{
+    int i = 0;
+    uint16_t bytes_cnt = ADC_TOTAL_CH * 2;
+    ASSERT( buf_size >=  bytes_cnt );
+    //disable ADC interrupt
+    ADC12IER0 &= ~ADC12IE7;           // Enable interrupt for MEM7
 
+    for ( i = 0; i <  ADC_TOTAL_CH; i++ ){
+        buf[i] = swap_bytes16(adc_channels[i]);
+    }
+    // enable ADC interrupt
+    ADC12IER0 |= ADC12IE7;           // Enable interrupt for MEM7
+
+    return bytes_cnt;
+
+}
 
 /*
  * convert adc_to_temperature

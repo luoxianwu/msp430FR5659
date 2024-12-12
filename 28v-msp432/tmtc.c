@@ -34,17 +34,16 @@ int tmtc_exe_cmd( uint8_t function, uint16_t address ){
  * read ADC
  * ADC value was refreshed every 50ms.
  */
-
-
-int tmtc_get_data( uint8_t function, uint16_t address, uint8_t * buffer, uint16_t sizeof_buf ){
+uint16_t tmtc_get_data( uint8_t function, uint16_t address, uint8_t * buffer, uint16_t sizeof_buf ){
+    uint16_t ret_len = 0;
     switch( function){
         case FUNC_ADC:
-            adc_get_channels( buffer, sizeof_buf );
+            ret_len = adc_get_channels_big_endian( buffer, sizeof_buf );
             break;
         default:
             break;
     }
-        return 1;
+        return ret_len;
 
 }
 

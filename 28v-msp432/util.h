@@ -12,5 +12,7 @@
 uint16_t swap_bytes16( uint16_t x );
 uint32_t swap_bytes32(uint32_t x);
 
+uint32_t calculate_crc32_bitwise(const unsigned char *data, size_t length);
+
 #endif //__UTIL_H__
 

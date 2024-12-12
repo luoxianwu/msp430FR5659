@@ -28,7 +28,7 @@ typedef struct {
 } __attribute__((packed)) CCSDS_SecondaryHeader;
 */
 
-// Define a structure for the main CCSDS Packet Frame header
+// Define a structure for the main CCSDS Packet Frame header, big endian
 typedef struct {
     /*
     uint8_t version_number : 3;     // CCSDS Version Number (3 bits)
@@ -38,17 +38,19 @@ typedef struct {
     */
     uint8_t ver_type_sec_apid;      //see bit field above
     uint8_t apid_lo;                //low 8 bits of apid
-    uint8_t segence_flag : 2;       // Packet Group Flag (2 bits) 0 continu, 1 first, 2 last, 3 no segment
-    uint16_t sequence_number : 14;  // Sequence Number (14 bits)
-    uint16_t data_length : 16;      // Data Length (16 bits)
+    uint8_t segence_flag_number_h ; // Packet Group Flag (2 bits) 0 continu, 1 first, 2 last, 3 no segment
+    uint8_t sequence_number_l;      // Sequence Number (14 bits)
+    uint8_t data_length_h;          // Data Length (16 bits)
+    uint8_t data_length_l;
 } __attribute__ ((aligned (1), packed)) Primary_Header;
 
 // Define a structure for the CCSDS 2nd Header
 typedef struct {
-    uint64_t timing_info : 48;      // Timing Info (48 bits)
-    uint8_t segment_number : 8;     // Segment Number (8 bits)
-    uint8_t function_code : 8;      // Function Code (8 bits)
-    uint16_t address_code : 16;     // Address Code (16 bits)
+    uint8_t timing_info[6];         // Timing Info (48 bits)
+    uint8_t segment_number;         // Segment Number (8 bits)
+    uint8_t function_code;          // Function Code (8 bits)
+    uint8_t address_code_h;         // Address Code (16 bits)
+    uint8_t address_code_l;
 } __attribute__ ((aligned (1), packed )) Second_Header;
 
 
@@ -64,4 +66,4 @@ extern CCSDS_Packet ccsds_pkt;
 extern CCSDS_Packet ccsds_pkt_response;
 bool uart_get_ccsds_pkt();
 // return ccsds packet length
-int ccdss_pack_data( void *data, size_t data_len );
+unsigned int ccdss_pack_data( void *data, size_t data_len );

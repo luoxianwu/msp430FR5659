@@ -114,7 +114,8 @@ int main(void) {
 
         if (uart_get_ccsds_pkt()) {
             uint8_t function = ccsds_pkt.secondary.function_code;
-            uint16_t address = ccsds_pkt.secondary.address_code;
+            uint16_t address = ccsds_pkt.secondary.address_code_l + (uint16_t)ccsds_pkt.secondary.address_code_h<<8;
+
             address = swap_bytes16(address);
 
             volatile uint8_t multi_field  = ccsds_pkt.primary.ver_type_sec_apid;
@@ -142,6 +143,7 @@ int main(void) {
             }
 
         }
+        /*
 
         if (adc_refreshed) {
             int i;
@@ -159,6 +161,7 @@ int main(void) {
             adc_refreshed = false;
             uart_printf("\n\r");
         }
+        */
 
     }
 

@@ -20,19 +20,21 @@ typedef enum {
 
 
 CCSDS_Packet ccsds_pkt_response = {
-    .pkt_sync = {0xEB, 0x90},  // Packet sync bytes
+    .pkt_sync = {0x55, 0xAA},  // Packet sync bytes
     .primary = {
-        .ver_type_sec_apid = 0x19,
+        .ver_type_sec_apid = 0x09, //TM type, with second header
         .apid_lo = 0x23,
-        .segence_flag = 0,
-        .sequence_number = 3,
-        .data_length = 0  // Will be set later based on actual data
+        .segence_flag_number_h = 0xc0,      // flag : 2 bits signal packet, number_h 6 bits
+        .sequence_number_l = 1,             // number_l
+        .data_length_h = 0,                 // Will be set later based on actual data
+        .data_length_l = 0
     },
     .secondary = {
         .timing_info = 0,
         .segment_number = 0,
         .function_code = 0,
-        .address_code = 0
+        .address_code_h = 0,
+        .address_code_l = 0
     },
     .data = {0},  // Initialize all data to zero
     .crc = 0  // Will be calculated later
@@ -107,13 +109,29 @@ bool uart_get_ccsds_pkt() {
 /*
  * pack data to ccsds packet
  */
-int ccdss_pack_data( void *data, size_t data_len ){
-    if (data_len <= MAX_DATA_SIZE) {
-        memcpy( ccsds_pkt_response.data, data, data_len );
-        ccsds_pkt_response.primary.data_length = SECONDARY_HEADER_SIZE + data_len + 4;
-        //calculate crc, append to the end
 
-        return sizeof(ccsds_pkt_response.pkt_sync) + sizeof(ccsds_pkt_response.pkt_sync) + ccsds_pkt_response.primary.data_length;
+unsigned int ccdss_pack_data( void *data, size_t data_len ){
+    uint8_t * pkt_bytes = (uint8_t*)&ccsds_pkt_response.primary;
+    uint16_t length;
+    uint32_t crc_cal_len;
+    uint32_t crc32;
+    if (data_len <= MAX_DATA_SIZE - 4) {
+        memcpy( ccsds_pkt_response.data, x, data_len );
+        // 1 less than actual length
+        length = SECONDARY_HEADER_SIZE + data_len + 4 - 1;
+        ccsds_pkt_response.primary.data_length_h = length >> 8;
+        ccsds_pkt_response.primary.data_length_l = length & 0xff;
+        //calculate crc, append to the end
+        crc_cal_len = sizeof(ccsds_pkt_response.primary) + sizeof(ccsds_pkt_response.secondary) + data_len;
+        crc32 = calculate_crc32_bitwise( (uint8_t*)&ccsds_pkt_response.primary, crc_cal_len );
+        //append CRC to the ccsds packet
+        pkt_bytes[crc_cal_len] =   (uint8_t)(crc32 >> 24);
+        pkt_bytes[crc_cal_len+1] = (uint8_t)(crc32 >> 16);
+        pkt_bytes[crc_cal_len+2] = (uint8_t)(crc32 >> 8);
+        pkt_bytes[crc_cal_len+3] = (uint8_t)(crc32);
+
+        //total bytes of the packet
+        return sizeof(ccsds_pkt_response.pkt_sync) + sizeof(ccsds_pkt_response.primary) + length + 1;
     }
     return 0;
 }
