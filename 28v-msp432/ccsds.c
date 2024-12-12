@@ -9,15 +9,6 @@
 
 extern bool uart_getc( uint8_t * c);
 
-typedef enum {
-    STATE_IDLE,
-    STATE_SYNC,
-    STATE_PRIMARY_HEADER,
-    STATE_SECONDARY_HEADER,
-    STATE_DATA,
-    STATE_CRC
-} CCSDS_State;
-
 
 CCSDS_Packet ccsds_pkt_response = {
     .pkt_sync = {0x55, 0xAA},  // Packet sync bytes
@@ -40,64 +31,78 @@ CCSDS_Packet ccsds_pkt_response = {
     .crc = 0  // Will be calculated later
 };
 
-CCSDS_Packet ccsds_pkt;
-static uint8_t * const pkt_byte = (uint8_t *)&ccsds_pkt;
-CCSDS_State state;
-uint16_t bytes_received;
-uint16_t data_length;
+CCSDS_Packet ccsds_receive_pkt;
+
+static uint8_t * const pkt_byte = (uint8_t *)&ccsds_receive_pkt;
+
 
 void ccsds_init(CCSDS_Packet *packet) {
-    state = STATE_IDLE;
-    bytes_received = 0;
-    data_length = 0;
+    packet->state = STATE_IDLE;
+    packet->bytes_received = 0;
+    packet->data_length = 0;
 }
 
 
 bool uart_get_ccsds_pkt() {
     uint8_t byte;
+    CCSDS_Packet *p = &ccsds_receive_pkt;
     
     if (!uart_getc(&byte)) {
         return false;  // No byte available
     }
 
-    pkt_byte[bytes_received++] = byte;
-    switch (state) {
+    pkt_byte[p->bytes_received++] = byte;
+    switch (p->state) {
 
         case STATE_IDLE:
-            state = STATE_SYNC;
+            p->state = STATE_SYNC;
             break;
         case STATE_SYNC:
-            if( bytes_received == 2 ){
+            if( p->bytes_received == 2 ){
                 if( pkt_byte[0] == 0x55 && pkt_byte[1] == 0xAA ){
-                    state = STATE_PRIMARY_HEADER;
+                    p->state = STATE_PRIMARY_HEADER;
                     break;
                 }
             }else{
-                bytes_received = 1;
+                p->bytes_received = 1;
                 pkt_byte[0] = pkt_byte[1]; //discard first byte
                 break;
             }
 
         case STATE_PRIMARY_HEADER:
-            if (bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE) {
+            if (p->bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE) {
                 // Convert data length from big-endian, data length is 1 less than actually data count
-                data_length = (pkt_byte[bytes_received-2]<<8) + pkt_byte[bytes_received-1] + 1;
-                state = STATE_SECONDARY_HEADER;
+                p->data_length = (pkt_byte[p->bytes_received-2]<<8) + pkt_byte[p->bytes_received-1] + 1;
+                p->state = STATE_SECONDARY_HEADER;
             }
             break;
 
         case STATE_SECONDARY_HEADER:
-            if (bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE + SECONDARY_HEADER_SIZE) {
-                state = STATE_DATA;
+            if (p->bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE + SECONDARY_HEADER_SIZE) {
+                p->state = STATE_DATA;
             }
             break;
 
         case STATE_DATA:
-            if (bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE + data_length ) {
-                state = STATE_IDLE;
-                bytes_received = 0;
-                data_length = 0;
-                return true;
+            if (p->bytes_received == SYNC_BYTES + PRIMARY_HEADER_SIZE + p->data_length ) {
+                uint32_t crc = calculate_crc32_bitwise( (uint8_t*)&p->primary, p->bytes_received - 2 - 4); // don't count sync and crc32
+                uint8_t *p_byte = (uint8_t*)&crc;
+                if( p_byte[3] == pkt_byte[p->bytes_received - 4] &&
+                    p_byte[2] == pkt_byte[p->bytes_received - 3] &&
+                    p_byte[1]  == pkt_byte[p->bytes_received - 2] &&
+                    p_byte[0]  == pkt_byte[p->bytes_received - 1] ) {
+
+                    p->state = STATE_VALID;
+                    return true;
+                }
+                else{
+                    p->state = STATE_CRC_ERR;
+                    return true;
+                }
+
+            }else
+            if (p->bytes_received > SYNC_BYTES + PRIMARY_HEADER_SIZE + p->data_length) {
+                //error
             }
             break;
 
@@ -116,7 +121,7 @@ unsigned int ccdss_pack_data( void *data, size_t data_len ){
     uint32_t crc_cal_len;
     uint32_t crc32;
     if (data_len <= MAX_DATA_SIZE - 4) {
-        memcpy( ccsds_pkt_response.data, x, data_len );
+        memcpy( ccsds_pkt_response.data, data, data_len );
         // 1 less than actual length
         length = SECONDARY_HEADER_SIZE + data_len + 4 - 1;
         ccsds_pkt_response.primary.data_length_h = length >> 8;

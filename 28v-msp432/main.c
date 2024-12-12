@@ -113,35 +113,43 @@ int main(void) {
         // check ccsds packet
 
         if (uart_get_ccsds_pkt()) {
-            uint8_t function = ccsds_pkt.secondary.function_code;
-            uint16_t address = ccsds_pkt.secondary.address_code_l + (uint16_t)ccsds_pkt.secondary.address_code_h<<8;
+            if( ccsds_receive_pkt.state == STATE_VALID ) {
+                uint8_t function = ccsds_receive_pkt.secondary.function_code;
+                uint16_t address = ccsds_receive_pkt.secondary.address_code_l + (uint16_t)ccsds_receive_pkt.secondary.address_code_h<<8;
 
-            address = swap_bytes16(address);
+                address = swap_bytes16(address);
 
-            volatile uint8_t multi_field  = ccsds_pkt.primary.ver_type_sec_apid;
-            volatile uint8_t ver = CCSDS_VERSION(multi_field);
-            volatile uint8_t type = CCSDS_TYPE(multi_field);
-            volatile uint8_t second_header = CCSDS_SEC_HDR(multi_field);
-            volatile  uint16_t apid = ccsds_pkt.primary.apid_lo;
-            apid += (uint16_t)CCSDS_APID_H(multi_field)<<8;
+                volatile uint8_t multi_field  = ccsds_receive_pkt.primary.ver_type_sec_apid;
+                volatile uint8_t ver = CCSDS_VERSION(multi_field);
+                volatile uint8_t type = CCSDS_TYPE(multi_field);
+                volatile uint8_t second_header = CCSDS_SEC_HDR(multi_field);
+                volatile  uint16_t apid = ccsds_receive_pkt.primary.apid_lo;
+                apid += (uint16_t)CCSDS_APID_H(multi_field)<<8;
 
-            if ( ver == 0 && apid == 0x123 ){
-                if( type == TYPE_TC ){ //telecommand
-                    ret = tmtc_exe_cmd( function, address );
-                }
-                else{ // telemetery
-                    ret = tmtc_get_data( function, address, user_data, sizeof(user_data) );
-                    if (ret != 0) {
-                        uint32_t data_len = ret;
-                        size_t pkt_len = ccdss_pack_data(user_data, data_len);
-                        uart_puts( (uint8_t*)&ccsds_pkt_response,  pkt_len );
+                if ( ver == 0 && apid == 0x123 ){
+                    if( type == TYPE_TC ){ //telecommand
+                        ret = tmtc_exe_cmd( function, address );
+                    }
+                    else{ // telemetery
+                        ret = tmtc_get_data( function, address, user_data, sizeof(user_data) );
+                        if (ret != 0) {
+                            uint32_t data_len = ret;
+                            size_t pkt_len = ccdss_pack_data(user_data, data_len);
+                            uart_puts( (uint8_t*)&ccsds_pkt_response,  pkt_len );
+
+                        }
 
                     }
 
                 }
+            }
+            else{
+                // a broken paccket
+                // report
+                // reset packet
 
             }
-
+            ccsds_init(&ccsds_receive_pkt);
         }
         /*
 

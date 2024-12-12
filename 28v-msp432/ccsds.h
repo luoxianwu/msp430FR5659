@@ -13,6 +13,18 @@
 #define CCSDS_SEC_HDR(x)  ( (x & 0x8)  ? 1 : 0 )
 #define CCSDS_APID_H(x)   (x & 0x7)
 
+
+typedef enum {
+    STATE_IDLE,
+    STATE_SYNC,
+    STATE_PRIMARY_HEADER,
+    STATE_SECONDARY_HEADER,
+    STATE_DATA,
+    STATE_VALID,
+    STATE_CRC_ERR
+
+} CCSDS_State;
+
 /*
 typedef struct {
     uint16_t version_type_flag_apid;
@@ -59,11 +71,18 @@ typedef struct {
     Primary_Header primary;
     Second_Header  secondary;
     uint8_t data[MAX_DATA_SIZE];
-    uint32_t crc;
+    uint32_t crc;                   // location vary, don't refer to it
+    //following variables are not part of ccsds packet for data transmit. just for management
+    CCSDS_State state;
+    uint16_t bytes_received;
+    uint16_t data_length;
+
 } CCSDS_Packet;
 
-extern CCSDS_Packet ccsds_pkt;
+extern CCSDS_Packet ccsds_receive_pkt;
 extern CCSDS_Packet ccsds_pkt_response;
+
+void ccsds_init(CCSDS_Packet *packet);
 bool uart_get_ccsds_pkt();
 // return ccsds packet length
 unsigned int ccdss_pack_data( void *data, size_t data_len );
